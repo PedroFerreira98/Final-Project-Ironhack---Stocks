@@ -1,4 +1,4 @@
-from collect_data import get_stock_prices as stock_prices_class
+from collect_data import stock_values_connector as stock_prices_class
 #from sklearn.preprocessing import MinMaxScaler
 #import math
 #import keras
@@ -71,7 +71,7 @@ def check_accuracy_percentage(real_close, predicted_close): # Its correct if its
             inside_interval += 0
     return inside_interval/len_predicted_close
 
-stock_prices = stock_prices_class.stock_close()
+stock_prices = stock_prices_class.stock_close('MSFT')
 
 print(len(stock_prices)*0.2)
 
@@ -151,7 +151,7 @@ predicted_stock_price = model.predict(X_test)
 predicted_stock_price = scaler.inverse_transform(predicted_stock_price)
 
 
-stock_values = stock_prices_class.stock_values()
+stock_values = stock_prices_class.get_stock_values('MSFT')
 stock_values = stock_values['Close']
 
 
@@ -192,7 +192,7 @@ fitted = model.fit(disp=-1)
 fc, se, conf = fitted.forecast(544, alpha=0.05)  # 95% confidence
 fc_series = pd.Series(fc, index=test_data.index)
 '''
-stock_values = stock_prices_class.stock_values()
+stock_values = stock_prices_class.get_stock_values('MSFT')
 #Predict using Prophet
 data_prophet = stock_values[['Date', 'Close']]
 data_prophet = data_prophet.rename(columns={"Date": "ds", "Close": "y"})
