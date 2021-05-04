@@ -91,6 +91,12 @@ def get_stock_values(ticker):
 def annual_income_statement(ticker):
     return fa.income_statement(ticker, api_key, period="annual")
 
+def annual_balance_sheet(ticker):
+    return fa.balance_sheet_statement(ticker, api_key, period="annual")
+
+def annual_cash_flow(ticker):
+    return fa.cash_flow_statement(ticker, api_key, period="annual")
+
 def annual_financial_ratios(ticker):
     return fa.financial_ratios(ticker, api_key, period="annual")
 
