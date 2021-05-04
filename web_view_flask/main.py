@@ -1,5 +1,7 @@
-from flask import Blueprint, render_template, redirect, url_for
+from flask import Blueprint, render_template, redirect, url_for,request
 from flask_login import login_required, current_user
+from collect_data import create_dataset
+
 
 main = Blueprint('main', __name__)
 
@@ -12,7 +14,16 @@ def index():
 def profile():
     return render_template('profile.html', name=current_user.name)
 
-@main.route('/dasboard')
+@main.route('/ticker')
+@login_required
+def ticker():
+    return render_template('ticker.html', name='Choose a Stock you want to analyse!')
+
+@main.route('/dashboard', methods=['POST', 'GET'])
 @login_required
 def dashboard():
-    return render_template('dashboard.html', name='Choose a Stock you want to analyse!')
+    ticker = request.form.get('ticker')
+    ticker = str(ticker)
+    print(ticker)
+    create_dataset.create_data(ticker)
+    return render_template('dashboard.html', name='Submitted!')
