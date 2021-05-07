@@ -1,15 +1,16 @@
+from sqlalchemy import create_engine
 import pandas as pd
 from collect_data import stock_values_connector as stock_prices_class
 from stock_movement_prediction import prophet_prediction as prophet_predict
+import mysql.connector as m
 
+ticker='MSFT'
 
-
-
-def create_data(ticker):
+def update_mysql(ticker):
     #Get All values from stock daily
     stock_values = prophet_predict.prophet_prediction(ticker)
     stock_values['Ticker'] = ticker
-    stock_values.to_csv('stock_values.csv')
+    #stock_values.to_csv('stock_values.csv')
 
     #Get annual income statement from stock
     annual_income_statement = stock_prices_class.annual_income_statement(ticker)
@@ -38,7 +39,9 @@ def create_data(ticker):
     financial_dataframe.drop(indexNames4, inplace=True)
     financial_dataframe.drop(indexNames5, inplace=True)
     financial_dataframe['Ticker'] = ticker
-    financial_dataframe.to_csv('financial_ratios.csv')
+    #financial_dataframe.to_csv('financial_ratios.csv')
+    financial_dataframe['Year'] = financial_dataframe['Year'].astype('datetime64[ns]')
+    financial_dataframe['Indicator_value'] = financial_dataframe['Indicator_value'].astype('float')
 
     #Get balance sheet
     balance_sheet = stock_prices_class.annual_balance_sheet(ticker)
@@ -58,9 +61,10 @@ def create_data(ticker):
     balance_sheet.drop(indexNames3, inplace=True)
     balance_sheet.drop(indexNames4, inplace=True)
     balance_sheet.drop(indexNames5, inplace=True)
-
     balance_sheet['Ticker'] = ticker
-    balance_sheet.to_csv('balance_sheet.csv')
+    #balance_sheet.to_csv('balance_sheet.csv')
+    balance_sheet['Year'] = balance_sheet['Year'].astype('datetime64[ns]')
+    balance_sheet['Indicator_value'] = balance_sheet['Indicator_value'].astype('float')
 
     #Get Cash Flow
     cash_flow = stock_prices_class.annual_cash_flow(ticker)
@@ -81,4 +85,44 @@ def create_data(ticker):
     cash_flow.drop(indexNames4, inplace=True)
     cash_flow.drop(indexNames5, inplace=True)
     cash_flow['Ticker'] = ticker
-    cash_flow.to_csv('cash_flow.csv')
+    #cash_flow.to_csv('cash_flow.csv')
+    cash_flow['Year'] = cash_flow['Year'].astype('datetime64[ns]')
+    cash_flow['Indicator_value'] = cash_flow['Indicator_value'].astype('float')
+
+
+
+    engine = create_engine("mysql+pymysql://{user}:{pw}@localhost:3306/{db}"
+                       .format(user="root",
+                               pw="Portugal12",
+                               db="stock_user_database"))
+
+    stock_values.to_sql('stock_values', engine, index=False, if_exists="replace")
+    financial_dataframe.to_sql('financial_ratios', engine, index=False, if_exists="replace")
+    balance_sheet.to_sql('balance_sheet', engine, index=False, if_exists="replace")
+    cash_flow.to_sql('cash_flow', engine, index=False, if_exists="replace")
+
+
+    # this part of the connector simply opens the door for the connection to the database
+    '''
+    pass_sql = 'Portugal12'  # please write your SQL pass here
+    cnx = m.connect(user='root', password=pass_sql,host='localhost',
+                    database='stock_user_database',
+                    auth_plugin='mysql_native_password')
+
+    # this line of code is always a good practice!!
+    if cnx.is_connected():
+        print("Connection open")
+        # do stuff you need to the database
+    else:
+        print("Connection is not successfully open")
+
+    
+    cursor = cnx.cursor()
+
+    query = "SELECT project_sql.city.city_name,project_sql.country.country_name, project_sql.country.GDP_Education, s.school FROM project_sql.country INNER JOIN project_sql.city ON project_sql.country.Country_Id = project_sql.city.Country_Id INNER JOIN project_sql.city_school ON project_sql.city.city_id = project_sql.city_school.city_id INNER JOIN project_sql.schools as s ON project_sql.city_school.schools_id = s.schools_id ORDER BY project_sql.country.GDP_Education DESC LIMIT 6;"
+
+    cursor.execute(query)
+    question_table = pd.DataFrame(cursor.fetchall())
+
+    cnx.close()
+    '''

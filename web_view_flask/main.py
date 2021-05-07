@@ -1,10 +1,10 @@
 from flask import Blueprint, render_template, redirect, url_for,request
 from flask_login import login_required, current_user
 from collect_data import create_dataset
-
+from collect_data import mysql_connector
 
 main = Blueprint('main', __name__)
-
+ticker='AAPL'
 @main.route('/')
 def index():
     return render_template('index.html')
@@ -25,5 +25,5 @@ def dashboard():
     ticker = request.form.get('ticker')
     ticker = str(ticker)
     print(ticker)
-    create_dataset.create_data(ticker)
+    mysql_connector.update_mysql(ticker)
     return render_template('dashboard.html', name='Submitted!')

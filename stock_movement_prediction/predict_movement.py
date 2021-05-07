@@ -26,7 +26,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from statsmodels.tsa.arima.model import ARIMA
 from pmdarima.arima import auto_arima
-
+from numpy import newaxis
 
 
 
@@ -71,22 +71,27 @@ def check_accuracy_percentage(real_close, predicted_close): # Its correct if its
             inside_interval += 0
     return inside_interval/len_predicted_close
 
+
+
 stock_prices = stock_prices_class.stock_close('MSFT')
 
-print(len(stock_prices)*0.2)
+print(round(len(stock_prices)*0.2))
+
+test_len = round(len(stock_prices)*0.2)
+training_len = round(len(stock_prices)*0.8)
 
 
 # Predicting with Long Short-Term Memory Model
 
 #Split Data in 80% training
-training_set = stock_prices[:1006]
-test_set = stock_prices[1006:]
+training_set = stock_prices[:training_len]
+test_set = stock_prices[training_len:]
 
 
 
 
 #Normalize data, might increase performance
-scaler = MinMaxScaler(feature_range = (0, 1))
+scaler = MinMaxScaler(feature_range=(0, 1))
 training_set_scaled = scaler.fit_transform(training_set)
 
 #Creating data structure with 60 time steps and 1 output
@@ -132,23 +137,120 @@ dataset_total = pd.concat((dataset_train, dataset_test), axis=0)
 inputs = dataset_total[60:].values
 inputs = inputs.reshape(-1, 1)
 inputs = scaler.transform(inputs)
-print(inputs.shape)
+print('Este é o inputs shape',inputs.shape)
 
 
 
 X_test = []
-for i in range(60, 1198):
+for i in range(60, inputs.shape[0]):
     X_test.append(inputs[i-60:i, 0])
 X_test = np.array(X_test)
 X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
-print(X_test.shape)
+print('Este é o shape do x test antes do predict ',X_test.shape)
 
 
 
 #Predict using test set
-a1 = X_test
 predicted_stock_price = model.predict(X_test)
 predicted_stock_price = scaler.inverse_transform(predicted_stock_price)
+
+def predict_sequences_multiple(model, firstValue,length):
+    prediction_seqs = []
+    curr_frame = firstValue
+    for i in range(length):
+        predicted = []
+        print(model.predict(curr_frame[newaxis,:,:]))
+        predicted.append(model.predict(curr_frame[newaxis,:,:])[0,0])
+        curr_frame = curr_frame[0:]
+        curr_frame = np.insert(curr_frame[0:], i+1, predicted[-1], axis=0)
+        prediction_seqs.append(predicted[-1])
+    return prediction_seqs
+
+predict_miracle = predict_sequences_multiple(model, X_test[-1],30)
+predict_miracle = scaler.inverse_transform(np.array(predict_miracle).reshape(-1,1))
+
+
+
+def predict_price():
+    stock_prices = stock_prices_class.stock_close('MSFT')
+    stock_values = stock_prices_class.get_stock_values('MSFT')
+    prices_len = len(stock_prices)
+    # Split Data in 80% training
+    training_set = stock_prices
+    #test_set = stock_prices[training_len:]
+
+    # Normalize data, might increase performance
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    training_set_scaled = scaler.fit_transform(training_set)
+
+    # Creating data structure with 60 time steps and 1 output
+    X_train = []
+    y_train = []
+    for i in range(60, prices_len):
+        X_train.append(training_set_scaled[i - 60:i, 0])
+        y_train.append(training_set_scaled[i, 0])
+    X_train, y_train = np.array(X_train), np.array(y_train)
+    X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
+
+    # Build Model
+    model = Sequential()
+    # Adding the first LSTM layer and some Dropout regularisation
+    model.add(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1)))
+    model.add(Dropout(0.2))
+    # Adding a second LSTM layer and some Dropout regularisation
+    model.add(LSTM(units=50, return_sequences=True))
+    model.add(Dropout(0.2))
+    # Adding a third LSTM layer and some Dropout regularisation
+    model.add(LSTM(units=50, return_sequences=True))
+    model.add(Dropout(0.2))
+    # Adding a fourth LSTM layer and some Dropout regularisation
+    model.add(LSTM(units=50))
+    model.add(Dropout(0.2))
+    # Adding the output layer
+    model.add(Dense(units=1))
+    # Compiling the RNN (Recurrent Neural Network)
+    model.compile(optimizer='adam', loss='mean_squared_error')
+    # Fitting the RNN to the Training set
+    model.fit(X_train, y_train, epochs=25, batch_size=32)
+
+    '''
+    dataset_train = pd.DataFrame(training_set)
+    dataset_test = pd.DataFrame(test_set)
+
+    dataset_total = pd.concat((dataset_train, dataset_test), axis=0)
+    # inputs = dataset_total[len(dataset_total) - len(dataset_test) - 60:].values
+    inputs = dataset_total[60:].values
+    inputs = inputs.reshape(-1, 1)
+    inputs = scaler.transform(inputs)
+    print(inputs.shape)
+    '''
+    for day in range(1, 90):
+        today = (date.today() + BDay(day))
+        stock_values = stock_values.append({'Date': today}, ignore_index=True)
+
+    stock_values = pd.DataFrame(stock_values['Close'])
+
+    # inputs = dataset_total[len(dataset_total) - len(dataset_test) - 60:].values
+    inputs = stock_values[60:].values
+    inputs = inputs.reshape(-1, 1)
+    inputs = scaler.transform(inputs)
+    print('Este é o inputs shape', inputs.shape)
+
+    X_test = []
+    for i in range(60, inputs.shape[0]):
+        X_test.append(inputs[i - 60:i, 0])
+    X_test = np.array(X_test)
+    X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
+    print('Este é o shape do x test antes do predict ', X_test.shape)
+
+    # Predict using test set
+    predicted_stock_price = model.predict(X_test)
+    predicted_stock_price = scaler.inverse_transform(predicted_stock_price)
+
+
+
+
+
 
 
 stock_values = stock_prices_class.get_stock_values('MSFT')
@@ -192,23 +294,47 @@ fitted = model.fit(disp=-1)
 fc, se, conf = fitted.forecast(544, alpha=0.05)  # 95% confidence
 fc_series = pd.Series(fc, index=test_data.index)
 '''
-stock_values = stock_prices_class.get_stock_values('MSFT')
-#Predict using Prophet
-data_prophet = stock_values[['Date', 'Close']]
-data_prophet = data_prophet.rename(columns={"Date": "ds", "Close": "y"})
+ticker='MSFT'
+def prophet_prediction(ticker):
+    stock_values = stock_prices_class.get_stock_values(ticker)
+    len_original = len(stock_values)
+    #Predict using Prophet
+    data_prophet = stock_values[['Date', 'Close']]
+    data_prophet = data_prophet.rename(columns={"Date": "ds", "Close": "y"})
 
-m = Prophet(daily_seasonality=True) # the Prophet class (model)
-m.fit(data_prophet) # fit the model using all data
+    m = Prophet(daily_seasonality=True) # the Prophet class (model)
+    m.fit(data_prophet) # fit the model using all data
 
-future = m.make_future_dataframe(periods=365) #we need to specify the number of days in future
-prediction = m.predict(future)
+    future = m.make_future_dataframe(periods=90) #we need to specify the number of days in future
+    prediction = m.predict(future)
+    prediction = prediction.trend[-89:].values
+
+    for day in range(0, 89):
+        today = (date.today() + BDay(day))
+        stock_values = stock_values.append({'Date': today}, ignore_index=True)
+
+    close = stock_values.Close.values
+    close_prices = []
+    i = 0
+    for element in range(len(stock_values)):
+        if element < len_original:
+            close_prices.append(close[element])
+        elif i < 89:
+            close_prices.append(prediction[i])
+            i+=1
+
+
+    stock_values.Close = close_prices
+
+
+'''
 fig1, ax1 = plt.subplots()
 m.plot(prediction)
 plt.title("Prediction MSFT Stock Price using the Prophet")
 plt.xlabel("Date")
 plt.ylabel("Close Stock Price")
 plt.show()
-
+'''
 
 
 accuracy_by_movement = check_accuracy(stock_prices, predicted_stock_price)
@@ -219,8 +345,7 @@ accuracy_by_interval = check_accuracy_percentage(stock_prices, predicted_stock_p
 
 future_days = []
 #yesterday = (date.today() + BDay(1))
-today = (date.today() + BDay(0))
-stock_values = stock_values.append({'Date': today}, ignore_index=True)
+
 
 
 
